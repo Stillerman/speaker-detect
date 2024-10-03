@@ -7,6 +7,14 @@ from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QPushBut
 from PyQt6.QtCore import QTimer, pyqtSignal, QObject
 from PyQt6.QtGui import QColor
 
+# Detect the operating system
+IS_WINDOWS = sys.platform.startswith('win')
+
+if IS_WINDOWS:
+    from ctypes import cast, POINTER
+    from comtypes import CLSCTX_ALL
+    from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+
 class SignalEmitter(QObject):
     update_signal = pyqtSignal()
 
@@ -140,20 +148,32 @@ class VolumeMonitorApp(QWidget):
             self.room_button.setText("Join Room")
 
     def get_system_volume(self):
-        try:
-            result = subprocess.run(['osascript', '-e', 'output volume of (get volume settings)'], capture_output=True, text=True)
-            return int(result.stdout.strip())
-        except Exception as e:
-            print(f"Error getting system volume: {e}")
-            return 0
+        if IS_WINDOWS:
+            devices = AudioUtilities.GetSpeakers()
+            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+            volume = cast(interface, POINTER(IAudioEndpointVolume))
+            return int(volume.GetMasterVolumeLevelScalar() * 100)
+        else:  # macOS
+            try:
+                result = subprocess.run(['osascript', '-e', 'output volume of (get volume settings)'], capture_output=True, text=True)
+                return int(result.stdout.strip())
+            except Exception as e:
+                print(f"Error getting system volume: {e}")
+                return 0
 
     def is_system_muted(self):
-        try:
-            result = subprocess.run(['osascript', '-e', 'output muted of (get volume settings)'], capture_output=True, text=True)
-            return result.stdout.strip().lower() == 'true'
-        except Exception as e:
-            print(f"Error getting mute status: {e}")
-            return False
+        if IS_WINDOWS:
+            devices = AudioUtilities.GetSpeakers()
+            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+            volume = cast(interface, POINTER(IAudioEndpointVolume))
+            return volume.GetMute()
+        else:  # macOS
+            try:
+                result = subprocess.run(['osascript', '-e', 'output muted of (get volume settings)'], capture_output=True, text=True)
+                return result.stdout.strip().lower() == 'true'
+            except Exception as e:
+                print(f"Error getting mute status: {e}")
+                return False
 
     def start_volume_detection(self):
         def check_volume():

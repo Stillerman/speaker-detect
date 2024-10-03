@@ -9,12 +9,13 @@ P2P Volume Monitor is a Python application that allows users to join virtual roo
 - Visual indicators for muted and unmuted states
 - Automatic detection of system volume changes
 - Cross-client synchronization of volume states
+- Support for both Windows and macOS
 
 ## Requirements
 
 - Python 3.7+
 - PyQt6
-- macOS (for volume detection, modifications needed for other operating systems)
+- pycaw (for Windows)
 
 ## Installation
 
@@ -28,6 +29,7 @@ P2P Volume Monitor is a Python application that allows users to join virtual roo
 2. Install the required dependencies:
    ```
    pip install PyQt6
+   pip install pycaw  # for Windows only
    ```
 
 ## Usage
@@ -53,5 +55,5 @@ P2P Volume Monitor is a Python application that allows users to join virtual roo
 ## Notes
 
 - This application currently uses a central server for peer discovery and message relaying. It's not a true peer-to-peer system.
-- Volume detection is currently implemented for macOS only. Modifications would be needed for Windows or Linux support.
+- Volume detection is implemented for both Windows and macOS.
 - There's no authentication or security measures in place. Use in trusted networks only.
