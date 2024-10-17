@@ -1,0 +1,17 @@
+altgraph==0.17.4
+cffi==1.17.1
+comtypes==1.4.7
+macholib==1.16.3
+numpy==2.1.1
+p2pnetwork==1.2
+packaging==24.1
+psutil==6.0.0
+pycaw==20240210
+pycparser==2.22
+pyinstaller==6.10.0
+pyinstaller-hooks-contrib==2024.8
+pyqt6==6.7.1
+pyqt6-qt6==6.7.3
+pyqt6-sip==13.8.0
+setuptools==75.1.0
+sounddevice==0.5.0
