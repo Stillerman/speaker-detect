@@ -23,6 +23,8 @@ class VolumeMonitorApp(QWidget):
         super().__init__()
         self.name = ""
         self.room = ""
+        self.server = ""
+        self.port = ""
         self.volume_level = 0
         self.is_muted = False
         self.peers = {}
@@ -42,6 +44,14 @@ class VolumeMonitorApp(QWidget):
         self.room_input = QLineEdit(self)
         self.room_input.setPlaceholderText("Enter room name")
         layout.addWidget(self.room_input)
+
+        self.server_input = QLineEdit(self)
+        self.server_input.setPlaceholderText("Enter server address")
+        layout.addWidget(self.server_input)
+
+        self.port_input = QLineEdit(self)
+        self.port_input.setPlaceholderText("Enter port number")
+        layout.addWidget(self.port_input)
 
         self.room_button = QPushButton("Join Room", self)
         self.room_button.clicked.connect(self.toggle_room)
@@ -69,34 +79,50 @@ class VolumeMonitorApp(QWidget):
     def join_room(self):
         self.name = self.name_input.text()
         self.room = self.room_input.text()
-        if self.name and self.room:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.connect(('localhost', 4999))
-            
-            # Get initial volume and mute status
-            self.volume_level = self.get_system_volume()
-            self.is_muted = self.is_system_muted()
-            
-            # Send join message with initial volume and mute status
-            join_message = {
-                "action": "join",
-                "name": self.name,
-                "room": self.room,
-                "volume": self.volume_level,
-                "muted": self.is_muted
-            }
-            self.socket.send(json.dumps(join_message).encode())
-            
-            threading.Thread(target=self.listen_for_messages, daemon=True).start()
-            
-            self.status_label.setText(f"Connected to room: {self.room}")
-            self.room_button.setText("Leave Room")
-            self.name_input.setEnabled(False)
-            self.room_input.setEnabled(False)
-            
-            # Update the volume label
-            status_text = f"Muted" if self.is_muted else f"Volume: {self.volume_level}"
-            self.volume_label.setText(f"Current Status: {status_text}")
+        self.server = self.server_input.text()
+        self.port = self.port_input.text()
+        if self.name and self.room and self.server and self.port:
+            try:
+                port = int(self.port)
+                self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.socket.connect((self.server, port))
+                
+                # Get initial volume and mute status
+                self.volume_level = self.get_system_volume()
+                self.is_muted = self.is_system_muted()
+                
+                # Send join message with initial volume and mute status
+                join_message = {
+                    "action": "join",
+                    "name": self.name,
+                    "room": self.room,
+                    "volume": self.volume_level,
+                    "muted": self.is_muted
+                }
+                self.socket.send(json.dumps(join_message).encode())
+                
+                threading.Thread(target=self.listen_for_messages, daemon=True).start()
+                
+                self.status_label.setText(f"Connected to room: {self.room}")
+                self.room_button.setText("Leave Room")
+                self.name_input.setEnabled(False)
+                self.room_input.setEnabled(False)
+                self.server_input.setEnabled(False)
+                self.port_input.setEnabled(False)
+                
+                # Update the volume label
+                status_text = f"Muted" if self.is_muted else f"Volume: {self.volume_level}"
+                self.volume_label.setText(f"Current Status: {status_text}")
+            except ValueError:
+                self.status_label.setText("Invalid port number")
+                self.socket.close()
+                self.socket = None
+            except Exception as e:
+                self.status_label.setText(f"Connection error: {str(e)}")
+                self.socket.close()
+                self.socket = None
+        else:
+            self.status_label.setText("Please fill in all fields")
 
     def leave_room(self):
         if self.socket:
@@ -109,6 +135,8 @@ class VolumeMonitorApp(QWidget):
         self.room_button.setText("Join Room")
         self.name_input.setEnabled(True)
         self.room_input.setEnabled(True)
+        self.server_input.setEnabled(True)
+        self.port_input.setEnabled(True)
 
     def listen_for_messages(self):
         while self.socket:
