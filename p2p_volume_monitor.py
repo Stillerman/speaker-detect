@@ -1,6 +1,5 @@
 import sys
 import json
-import socket
 import threading
 import subprocess
 import asyncio

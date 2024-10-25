@@ -42,3 +42,23 @@ jobs:
           spec: "p2p_volume_monitor.py"
           options: --onefile --name "P2P Volume Monitor - Windows"
           upload_exe_with_name: p2p-volume-monitor-windows
+      # Add these new steps
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          draft: false
+          prerelease: false
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/p2p-volume-monitor-windows.exe
+          asset_name: p2p-volume-monitor-windows.exe
+          asset_content_type: application/octet-stream

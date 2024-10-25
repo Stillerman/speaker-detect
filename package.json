@@ -1,0 +1,14 @@
+{
+  "name": "mic-detect",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/Stillerman/speaker-detect.git",
+  "author": "Jason Stillerman <jason.t.stillerman@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}

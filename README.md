@@ -22,8 +22,8 @@ P2P Volume Monitor is a Python application that allows users to join virtual roo
 1. Clone the repository:
 
    ```
-   git clone https://github.com/yourusername/p2p-volume-monitor.git
-   cd p2p-volume-monitor
+   git clone https://github.com/stillerman/speaker-detect
+   cd speaker-detect
    ```
 
 2. Install the required dependencies:
@@ -37,7 +37,8 @@ P2P Volume Monitor is a Python application that allows users to join virtual roo
 1. Start the server:
 
    ```
-   python server.py
+   yarn install
+   yarn start
    ```
 
 2. Run the client application (can be run multiple times for multiple clients):
@@ -54,6 +55,5 @@ P2P Volume Monitor is a Python application that allows users to join virtual roo
 
 ## Notes
 
-- This application currently uses a central server for peer discovery and message relaying. It's not a true peer-to-peer system.
 - Volume detection is implemented for both Windows and macOS.
 - There's no authentication or security measures in place. Use in trusted networks only.
