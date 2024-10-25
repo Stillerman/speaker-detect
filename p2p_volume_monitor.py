@@ -25,7 +25,7 @@ class VolumeMonitorApp(QWidget):
         super().__init__()
         self.name = ""
         self.room = ""
-        self.uri = ""  # Changed from server/port to uri
+        self.uri = "wss://speaker-detect.onrender.com:443/ws"  # Changed from server/port to uri
         self.volume_level = 0
         self.is_muted = False
         self.peers = {}
