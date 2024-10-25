@@ -2,6 +2,7 @@ import socket
 import json
 import threading
 import logging
+import os
 
 logging.basicConfig(level=logging.INFO)
 
@@ -76,10 +77,11 @@ def update_room(room):
                 remove_client(client)
 
 def start_server():
+    port = int(os.environ.get("PORT", 10000))  # Render uses PORT=10000 by default
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(('0.0.0.0', 4999))
+    server.bind(('0.0.0.0', port))  # Bind to 0.0.0.0 instead of localhost
     server.listen(5)
-    logging.info("Server listening on port 4999")
+    logging.info(f"Server listening on port {port}")
 
     while True:
         client_socket, client_address = server.accept()
