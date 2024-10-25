@@ -3,6 +3,8 @@ import json
 import socket
 import threading
 import subprocess
+import asyncio
+import websockets
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, QLineEdit, QListWidget, QListWidgetItem
 from PyQt6.QtCore import QTimer, pyqtSignal, QObject
 from PyQt6.QtGui import QColor
@@ -28,7 +30,7 @@ class VolumeMonitorApp(QWidget):
         self.volume_level = 0
         self.is_muted = False
         self.peers = {}
-        self.socket = None
+        self.websocket = None  # Change socket to websocket
         self.signal_emitter = SignalEmitter()
         self.signal_emitter.update_signal.connect(self.update_peer_list)
         self.initUI()
@@ -71,7 +73,7 @@ class VolumeMonitorApp(QWidget):
         self.setGeometry(300, 300, 300, 400)
 
     def toggle_room(self):
-        if self.socket is None:
+        if self.websocket is None:
             self.join_room()
         else:
             self.leave_room()
@@ -83,81 +85,89 @@ class VolumeMonitorApp(QWidget):
         self.port = self.port_input.text()
         if self.name and self.room and self.server and self.port:
             try:
-                port = int(self.port)
-                self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.socket.connect((self.server, port))
+                uri = f"ws://{self.server}:{self.port}"
                 
                 # Get initial volume and mute status
                 self.volume_level = self.get_system_volume()
                 self.is_muted = self.is_system_muted()
                 
-                # Send join message with initial volume and mute status
-                join_message = {
-                    "action": "join",
-                    "name": self.name,
-                    "room": self.room,
-                    "volume": self.volume_level,
-                    "muted": self.is_muted
-                }
-                self.socket.send(json.dumps(join_message).encode())
+                # Start websocket connection in a separate thread
+                self.websocket_thread = threading.Thread(
+                    target=self.run_websocket_client,
+                    args=(uri,),
+                    daemon=True
+                )
+                self.websocket_thread.start()
                 
-                threading.Thread(target=self.listen_for_messages, daemon=True).start()
-                
-                self.status_label.setText(f"Connected to room: {self.room}")
+                self.status_label.setText(f"Connecting to room: {self.room}")
                 self.room_button.setText("Leave Room")
                 self.name_input.setEnabled(False)
                 self.room_input.setEnabled(False)
                 self.server_input.setEnabled(False)
                 self.port_input.setEnabled(False)
-                
-                # Update the volume label
-                status_text = f"Muted" if self.is_muted else f"Volume: {self.volume_level}"
-                self.volume_label.setText(f"Current Status: {status_text}")
-            except ValueError:
-                self.status_label.setText("Invalid port number")
-                self.socket.close()
-                self.socket = None
             except Exception as e:
                 self.status_label.setText(f"Connection error: {str(e)}")
-                self.socket.close()
-                self.socket = None
+                self.websocket = None
         else:
             self.status_label.setText("Please fill in all fields")
 
-    def leave_room(self):
-        if self.socket:
-            self.socket.send(json.dumps({"action": "leave"}).encode())
-            self.socket.close()
-            self.socket = None
-        self.peers = {}
-        self.update_peer_list()
-        self.status_label.setText("Not connected")
-        self.room_button.setText("Join Room")
-        self.name_input.setEnabled(True)
-        self.room_input.setEnabled(True)
-        self.server_input.setEnabled(True)
-        self.port_input.setEnabled(True)
-
-    def listen_for_messages(self):
-        while self.socket:
+    def run_websocket_client(self, uri):
+        async def client():
             try:
-                data = self.socket.recv(1024).decode()
-                if not data:
-                    break
-                message = json.loads(data)
-                if message["action"] == "update":
-                    self.peers = message["peers"]
-                    self.signal_emitter.update_signal.emit()
-            except json.JSONDecodeError:
-                print("Received invalid JSON data")
+                async with websockets.connect(uri) as websocket:
+                    self.websocket = websocket
+                    
+                    # Send join message
+                    join_message = {
+                        "action": "join",
+                        "name": self.name,
+                        "room": self.room,
+                        "volume": self.volume_level,
+                        "muted": self.is_muted
+                    }
+                    await websocket.send(json.dumps(join_message))
+                    
+                    # Start receiving messages
+                    while True:
+                        try:
+                            message = await websocket.recv()
+                            data = json.loads(message)
+                            if data["action"] == "update":
+                                self.peers = data["peers"]
+                                self.signal_emitter.update_signal.emit()
+                        except websockets.exceptions.ConnectionClosed:
+                            break
+                        except Exception as e:
+                            print(f"Error receiving message: {e}")
+                            break
+                    
             except Exception as e:
-                print(f"Error in listen_for_messages: {e}")
-                break
-        self.socket = None
-        self.signal_emitter.update_signal.emit()
-        self.name_input.setEnabled(True)
-        self.room_input.setEnabled(True)
-        self.room_button.setText("Join Room")
+                print(f"WebSocket connection error: {e}")
+            finally:
+                self.websocket = None
+                self.signal_emitter.update_signal.emit()
+
+        asyncio.run(client())
+
+    def leave_room(self):
+        if self.websocket:
+            async def close_connection():
+                try:
+                    await self.websocket.send(json.dumps({"action": "leave"}))
+                    await self.websocket.close()
+                except:
+                    pass
+                finally:
+                    self.websocket = None
+            
+            asyncio.run(close_connection())
+            self.status_label.setText("Disconnected")
+            self.room_button.setText("Join Room")
+            self.name_input.setEnabled(True)
+            self.room_input.setEnabled(True)
+            self.server_input.setEnabled(True)
+            self.port_input.setEnabled(True)
+            self.peer_list.clear()
 
     def update_peer_list(self):
         self.peer_list.clear()
@@ -171,7 +181,7 @@ class VolumeMonitorApp(QWidget):
                 item.setBackground(QColor('#FFB6C1'))  # Light red
             self.peer_list.addItem(item)
 
-        if self.socket is None:
+        if self.websocket is None:
             self.status_label.setText("Not connected")
             self.room_button.setText("Join Room")
 
@@ -205,7 +215,7 @@ class VolumeMonitorApp(QWidget):
 
     def start_volume_detection(self):
         def check_volume():
-            if self.socket is None:
+            if self.websocket is None:
                 return
             new_volume = self.get_system_volume()
             new_mute_status = self.is_system_muted()
@@ -214,16 +224,21 @@ class VolumeMonitorApp(QWidget):
                 self.is_muted = new_mute_status
                 status_text = f"Muted" if self.is_muted else f"Volume: {self.volume_level}"
                 self.volume_label.setText(f"Current Status: {status_text}")
-                try:
-                    self.socket.send(json.dumps({
-                        "action": "volume",
-                        "name": self.name,
-                        "volume": self.volume_level,
-                        "muted": self.is_muted
-                    }).encode())
-                except Exception as e:
-                    print(f"Error sending volume update: {e}")
-                    self.leave_room()
+                
+                async def send_volume_update():
+                    try:
+                        await self.websocket.send(json.dumps({
+                            "action": "volume",
+                            "name": self.name,
+                            "volume": self.volume_level,
+                            "muted": self.is_muted
+                        }))
+                    except Exception as e:
+                        print(f"Error sending volume update: {e}")
+                        self.leave_room()
+                
+                if self.websocket:
+                    asyncio.run(send_volume_update())
 
         self.volume_timer = QTimer()
         self.volume_timer.timeout.connect(check_volume)
