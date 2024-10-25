@@ -25,7 +25,7 @@ class VolumeMonitorApp(QWidget):
         super().__init__()
         self.name = ""
         self.room = ""
-        self.uri = "wss://speaker-detect.onrender.com:443/ws"  # Changed from server/port to uri
+        self.uri = ""  # Changed from server/port to uri
         self.volume_level = 0
         self.is_muted = False
         self.peers = {}
@@ -48,6 +48,7 @@ class VolumeMonitorApp(QWidget):
 
         self.uri_input = QLineEdit(self)
         self.uri_input.setPlaceholderText("Enter WebSocket URI (wss://...)")
+        self.uri_input.setText("wss://speaker-detect.onrender.com:443/ws")
         layout.addWidget(self.uri_input)
 
         self.room_button = QPushButton("Join Room", self)
