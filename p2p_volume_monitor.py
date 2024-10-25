@@ -25,8 +25,7 @@ class VolumeMonitorApp(QWidget):
         super().__init__()
         self.name = ""
         self.room = ""
-        self.server = ""
-        self.port = ""
+        self.uri = ""  # Changed from server/port to uri
         self.volume_level = 0
         self.is_muted = False
         self.peers = {}
@@ -47,13 +46,9 @@ class VolumeMonitorApp(QWidget):
         self.room_input.setPlaceholderText("Enter room name")
         layout.addWidget(self.room_input)
 
-        self.server_input = QLineEdit(self)
-        self.server_input.setPlaceholderText("Enter server address")
-        layout.addWidget(self.server_input)
-
-        self.port_input = QLineEdit(self)
-        self.port_input.setPlaceholderText("Enter port number")
-        layout.addWidget(self.port_input)
+        self.uri_input = QLineEdit(self)
+        self.uri_input.setPlaceholderText("Enter WebSocket URI (wss://...)")
+        layout.addWidget(self.uri_input)
 
         self.room_button = QPushButton("Join Room", self)
         self.room_button.clicked.connect(self.toggle_room)
@@ -81,11 +76,10 @@ class VolumeMonitorApp(QWidget):
     def join_room(self):
         self.name = self.name_input.text()
         self.room = self.room_input.text()
-        self.server = self.server_input.text()
-        self.port = self.port_input.text()
-        if self.name and self.room and self.server and self.port:
+        self.uri = self.uri_input.text()  # Get URI directly
+        if self.name and self.room and self.uri:
             try:
-                uri = f"ws://{self.server}:{self.port}"
+                print(f"Connecting to {self.uri}")  # Debug print
                 
                 # Get initial volume and mute status
                 self.volume_level = self.get_system_volume()
@@ -94,7 +88,7 @@ class VolumeMonitorApp(QWidget):
                 # Start websocket connection in a separate thread
                 self.websocket_thread = threading.Thread(
                     target=self.run_websocket_client,
-                    args=(uri,),
+                    args=(self.uri,),  # Pass URI directly
                     daemon=True
                 )
                 self.websocket_thread.start()
@@ -103,8 +97,7 @@ class VolumeMonitorApp(QWidget):
                 self.room_button.setText("Leave Room")
                 self.name_input.setEnabled(False)
                 self.room_input.setEnabled(False)
-                self.server_input.setEnabled(False)
-                self.port_input.setEnabled(False)
+                self.uri_input.setEnabled(False) 
             except Exception as e:
                 self.status_label.setText(f"Connection error: {str(e)}")
                 self.websocket = None
@@ -165,8 +158,7 @@ class VolumeMonitorApp(QWidget):
             self.room_button.setText("Join Room")
             self.name_input.setEnabled(True)
             self.room_input.setEnabled(True)
-            self.server_input.setEnabled(True)
-            self.port_input.setEnabled(True)
+            self.uri_input.setEnabled(True)  # Enable URI input instead of server/port
             self.peer_list.clear()
 
     def update_peer_list(self):

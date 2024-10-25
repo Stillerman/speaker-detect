@@ -1,16 +1,25 @@
 const WebSocket = require("ws");
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3000;
 
 // Initialize server state
 const clients = new Map();
 const rooms = new Map();
 
-// Create WebSocket server
-const wss = new WebSocket.Server({ port: PORT });
+// Create WebSocket server with path
+const wss = new WebSocket.Server({
+  port: PORT,
+  path: "/ws", // Add explicit path
+});
 console.info(`Server listening on port ${PORT}`);
+
+// Add connection error handling
+wss.on("error", (error) => {
+  console.error("WebSocket Server Error:", error);
+});
 
 wss.on("connection", (ws, req) => {
   console.info(`New connection from ${req.socket.remoteAddress}`);
+  console.info("Headers:", req.headers); // Log headers for debugging
 
   ws.on("message", (data) => {
     try {
