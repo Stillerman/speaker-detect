@@ -15,3 +15,4 @@ pyqt6-qt6==6.7.3
 pyqt6-sip==13.8.0
 setuptools==75.1.0
 sounddevice==0.5.0
+websockets==13.1
