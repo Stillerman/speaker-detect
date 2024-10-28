@@ -163,6 +163,8 @@ class VolumeMonitorApp(QWidget):
                     self.websocket = None
             
             asyncio.run(close_connection())
+            self.peers = {}  # Clear the peers dictionary
+            self.update_peer_list()
             self.status_label.setText("Disconnected")
             self.room_button.setText("Join Room")
             self.name_input.setEnabled(True)
