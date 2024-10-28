@@ -179,10 +179,18 @@ class VolumeMonitorApp(QWidget):
 
     def get_system_volume(self):
         if IS_WINDOWS:
-            devices = AudioUtilities.GetSpeakers()
-            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-            volume = cast(interface, POINTER(IAudioEndpointVolume))
-            return int(volume.GetMasterVolumeLevelScalar() * 100)
+            try:
+                devices = AudioUtilities.GetSpeakers()
+                interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                volume = cast(interface, POINTER(IAudioEndpointVolume))
+                level = volume.GetMasterVolumeLevelScalar()
+                # Properly release COM objects
+                volume.Release()
+                interface.Release()
+                return int(level * 100)
+            except Exception as e:
+                print(f"Error getting system volume: {e}")
+                return 0
         else:  # macOS
             try:
                 result = subprocess.run(['osascript', '-e', 'output volume of (get volume settings)'], capture_output=True, text=True)
@@ -193,10 +201,18 @@ class VolumeMonitorApp(QWidget):
 
     def is_system_muted(self):
         if IS_WINDOWS:
-            devices = AudioUtilities.GetSpeakers()
-            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-            volume = cast(interface, POINTER(IAudioEndpointVolume))
-            return volume.GetMute()
+            try:
+                devices = AudioUtilities.GetSpeakers()
+                interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                volume = cast(interface, POINTER(IAudioEndpointVolume))
+                muted = volume.GetMute()
+                # Properly release COM objects
+                volume.Release()
+                interface.Release()
+                return muted
+            except Exception as e:
+                print(f"Error getting mute status: {e}")
+                return False
         else:  # macOS
             try:
                 result = subprocess.run(['osascript', '-e', 'output muted of (get volume settings)'], capture_output=True, text=True)
