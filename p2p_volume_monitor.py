@@ -24,13 +24,22 @@ class VolumeMonitorApp(QWidget):
         super().__init__()
         self.name = ""
         self.room = ""
-        self.uri = ""  # Changed from server/port to uri
+        self.uri = ""
         self.volume_level = 0
         self.is_muted = False
         self.peers = {}
-        self.websocket = None  # Change socket to websocket
+        self.websocket = None
         self.signal_emitter = SignalEmitter()
         self.signal_emitter.update_signal.connect(self.update_peer_list)
+        
+        # Initialize audio interface for Windows
+        if IS_WINDOWS:
+            devices = AudioUtilities.GetSpeakers()
+            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+            self.volume_interface = cast(interface, POINTER(IAudioEndpointVolume))
+        else:
+            self.volume_interface = None
+            
         self.initUI()
         self.start_volume_detection()
 
@@ -180,13 +189,7 @@ class VolumeMonitorApp(QWidget):
     def get_system_volume(self):
         if IS_WINDOWS:
             try:
-                devices = AudioUtilities.GetSpeakers()
-                interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-                volume = cast(interface, POINTER(IAudioEndpointVolume))
-                level = volume.GetMasterVolumeLevelScalar()
-                # Properly release COM objects
-                volume.Release()
-                interface.Release()
+                level = self.volume_interface.GetMasterVolumeLevelScalar()
                 return int(level * 100)
             except Exception as e:
                 print(f"Error getting system volume: {e}")
@@ -202,14 +205,7 @@ class VolumeMonitorApp(QWidget):
     def is_system_muted(self):
         if IS_WINDOWS:
             try:
-                devices = AudioUtilities.GetSpeakers()
-                interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-                volume = cast(interface, POINTER(IAudioEndpointVolume))
-                muted = volume.GetMute()
-                # Properly release COM objects
-                volume.Release()
-                interface.Release()
-                return muted
+                return self.volume_interface.GetMute()
             except Exception as e:
                 print(f"Error getting mute status: {e}")
                 return False
@@ -251,6 +247,11 @@ class VolumeMonitorApp(QWidget):
         self.volume_timer = QTimer()
         self.volume_timer.timeout.connect(check_volume)
         self.volume_timer.start(1000)  # Check every second
+
+    def __del__(self):
+        # Cleanup
+        if IS_WINDOWS and hasattr(self, 'volume_interface'):
+            self.volume_interface = None
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
