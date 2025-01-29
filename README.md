@@ -54,7 +54,7 @@ P2P Volume Monitor is a Python application that allows users to join virtual roo
 
 5. To leave the room, click the "Leave Room" button.
 
-## Notes
+## Deployment
 
-- Volume detection is implemented for both Windows and macOS.
-- There's no authentication or security measures in place. Use in trusted networks only.
+- Client builds for Windows are automatically created and uploaded to github. This is done with the github actions workflow in `.github/workflows/build.yml`.
+- The server is deployed on render.com.
