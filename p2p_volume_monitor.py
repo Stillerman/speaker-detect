@@ -4,20 +4,31 @@ import threading
 import subprocess
 import asyncio
 import websockets
-from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, QLineEdit, QListWidget, QListWidgetItem
+from PyQt6.QtWidgets import (
+    QApplication,
+    QWidget,
+    QVBoxLayout,
+    QLabel,
+    QPushButton,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+)
 from PyQt6.QtCore import QTimer, pyqtSignal, QObject
 from PyQt6.QtGui import QColor
 
 # Detect the operating system
-IS_WINDOWS = sys.platform.startswith('win')
+IS_WINDOWS = sys.platform.startswith("win")
 
 if IS_WINDOWS:
     from ctypes import cast, POINTER
     from comtypes import CLSCTX_ALL
     from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
+
 class SignalEmitter(QObject):
     update_signal = pyqtSignal()
+
 
 class VolumeMonitorApp(QWidget):
     def __init__(self):
@@ -31,7 +42,7 @@ class VolumeMonitorApp(QWidget):
         self.websocket = None
         self.signal_emitter = SignalEmitter()
         self.signal_emitter.update_signal.connect(self.update_peer_list)
-        
+
         # Initialize audio interface for Windows
         if IS_WINDOWS:
             devices = AudioUtilities.GetSpeakers()
@@ -39,7 +50,7 @@ class VolumeMonitorApp(QWidget):
             self.volume_interface = cast(interface, POINTER(IAudioEndpointVolume))
         else:
             self.volume_interface = None
-            
+
         self.initUI()
         self.start_volume_detection()
 
@@ -56,7 +67,7 @@ class VolumeMonitorApp(QWidget):
 
         self.uri_input = QLineEdit(self)
         self.uri_input.setPlaceholderText("Enter WebSocket URI (wss://...)")
-        self.uri_input.setText("wss://speaker-detect.onrender.com:443/ws")
+        self.uri_input.setText("wss://speaker-detect-vo3r.onrender.com:443/ws")
         layout.addWidget(self.uri_input)
 
         self.room_button = QPushButton("Join Room", self)
@@ -73,7 +84,7 @@ class VolumeMonitorApp(QWidget):
         layout.addWidget(self.volume_label)
 
         self.setLayout(layout)
-        self.setWindowTitle('P2P Volume Monitor')
+        self.setWindowTitle("P2P Volume Monitor")
         self.setGeometry(300, 300, 300, 400)
 
     def toggle_room(self):
@@ -89,24 +100,24 @@ class VolumeMonitorApp(QWidget):
         if self.name and self.room and self.uri:
             try:
                 print(f"Connecting to {self.uri}")  # Debug print
-                
+
                 # Get initial volume and mute status
                 self.volume_level = self.get_system_volume()
                 self.is_muted = self.is_system_muted()
-                
+
                 # Start websocket connection in a separate thread
                 self.websocket_thread = threading.Thread(
                     target=self.run_websocket_client,
                     args=(self.uri,),  # Pass URI directly
-                    daemon=True
+                    daemon=True,
                 )
                 self.websocket_thread.start()
-                
+
                 self.status_label.setText(f"Connecting to room: {self.room}")
                 self.room_button.setText("Leave Room")
                 self.name_input.setEnabled(False)
                 self.room_input.setEnabled(False)
-                self.uri_input.setEnabled(False) 
+                self.uri_input.setEnabled(False)
             except Exception as e:
                 self.status_label.setText(f"Connection error: {str(e)}")
                 self.websocket = None
@@ -118,17 +129,17 @@ class VolumeMonitorApp(QWidget):
             try:
                 async with websockets.connect(uri) as websocket:
                     self.websocket = websocket
-                    
+
                     # Send join message
                     join_message = {
                         "action": "join",
                         "name": self.name,
                         "room": self.room,
                         "volume": self.volume_level,
-                        "muted": self.is_muted
+                        "muted": self.is_muted,
                     }
                     await websocket.send(json.dumps(join_message))
-                    
+
                     # Start receiving messages
                     while True:
                         try:
@@ -142,7 +153,7 @@ class VolumeMonitorApp(QWidget):
                         except Exception as e:
                             print(f"Error receiving message: {e}")
                             break
-                    
+
             except Exception as e:
                 print(f"WebSocket connection error: {e}")
             finally:
@@ -153,6 +164,7 @@ class VolumeMonitorApp(QWidget):
 
     def leave_room(self):
         if self.websocket:
+
             async def close_connection():
                 try:
                     await self.websocket.send(json.dumps({"action": "leave"}))
@@ -161,7 +173,7 @@ class VolumeMonitorApp(QWidget):
                     pass
                 finally:
                     self.websocket = None
-            
+
             asyncio.run(close_connection())
             self.peers = {}  # Clear the peers dictionary
             self.update_peer_list()
@@ -175,13 +187,13 @@ class VolumeMonitorApp(QWidget):
     def update_peer_list(self):
         self.peer_list.clear()
         for name, status in self.peers.items():
-            volume, muted = status['volume'], status['muted']
+            volume, muted = status["volume"], status["muted"]
             status_text = f"Muted" if muted else f"Volume {volume}"
             item = QListWidgetItem(f"{name}: {status_text}")
             if muted or volume == 0:
-                item.setBackground(QColor('#90EE90'))  # Light green
+                item.setBackground(QColor("#90EE90"))  # Light green
             else:
-                item.setBackground(QColor('#FFB6C1'))  # Light red
+                item.setBackground(QColor("#FFB6C1"))  # Light red
             self.peer_list.addItem(item)
 
         if self.websocket is None:
@@ -198,7 +210,11 @@ class VolumeMonitorApp(QWidget):
                 return 0
         else:  # macOS
             try:
-                result = subprocess.run(['osascript', '-e', 'output volume of (get volume settings)'], capture_output=True, text=True)
+                result = subprocess.run(
+                    ["osascript", "-e", "output volume of (get volume settings)"],
+                    capture_output=True,
+                    text=True,
+                )
                 return int(result.stdout.strip())
             except Exception as e:
                 print(f"Error getting system volume: {e}")
@@ -213,8 +229,12 @@ class VolumeMonitorApp(QWidget):
                 return False
         else:  # macOS
             try:
-                result = subprocess.run(['osascript', '-e', 'output muted of (get volume settings)'], capture_output=True, text=True)
-                return result.stdout.strip().lower() == 'true'
+                result = subprocess.run(
+                    ["osascript", "-e", "output muted of (get volume settings)"],
+                    capture_output=True,
+                    text=True,
+                )
+                return result.stdout.strip().lower() == "true"
             except Exception as e:
                 print(f"Error getting mute status: {e}")
                 return False
@@ -228,21 +248,27 @@ class VolumeMonitorApp(QWidget):
             if new_volume != self.volume_level or new_mute_status != self.is_muted:
                 self.volume_level = new_volume
                 self.is_muted = new_mute_status
-                status_text = f"Muted" if self.is_muted else f"Volume: {self.volume_level}"
+                status_text = (
+                    f"Muted" if self.is_muted else f"Volume: {self.volume_level}"
+                )
                 self.volume_label.setText(f"Current Status: {status_text}")
-                
+
                 async def send_volume_update():
                     try:
-                        await self.websocket.send(json.dumps({
-                            "action": "volume",
-                            "name": self.name,
-                            "volume": self.volume_level,
-                            "muted": self.is_muted
-                        }))
+                        await self.websocket.send(
+                            json.dumps(
+                                {
+                                    "action": "volume",
+                                    "name": self.name,
+                                    "volume": self.volume_level,
+                                    "muted": self.is_muted,
+                                }
+                            )
+                        )
                     except Exception as e:
                         print(f"Error sending volume update: {e}")
                         self.leave_room()
-                
+
                 if self.websocket:
                     asyncio.run(send_volume_update())
 
@@ -252,10 +278,11 @@ class VolumeMonitorApp(QWidget):
 
     def __del__(self):
         # Cleanup
-        if IS_WINDOWS and hasattr(self, 'volume_interface'):
+        if IS_WINDOWS and hasattr(self, "volume_interface"):
             self.volume_interface = None
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     ex = VolumeMonitorApp()
     ex.show()
