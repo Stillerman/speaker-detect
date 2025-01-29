@@ -1,5 +1,7 @@
 # P2P Volume Monitor
 
+![P2P Volume Monitor](./screenshot.png)
+
 P2P Volume Monitor is a Python application that allows users to join virtual rooms and monitor each other's system volume levels in real-time. It's designed to help groups ensure that everyone's speakers are muted or at an appropriate volume level during online meetings or collaborative sessions.
 
 ## Features
@@ -28,8 +30,7 @@ P2P Volume Monitor is a Python application that allows users to join virtual roo
 
 2. Install the required dependencies:
    ```
-   pip install PyQt6
-   pip install pycaw  # for Windows only
+   pip install -r requirements.txt
    ```
 
 ## Usage
@@ -47,7 +48,7 @@ P2P Volume Monitor is a Python application that allows users to join virtual roo
    python p2p_volume_monitor.py
    ```
 
-3. Enter your name and a room name, then click "Join Room".
+3. Enter your name and a room name, the uri of the server and then click "Join Room".
 
 4. The application will display the volume status of all participants in the room. Green indicates muted or zero volume, while red indicates unmuted with volume above zero.
 
